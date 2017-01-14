@@ -101,6 +101,13 @@ func (tx *Tx) Bucket(name []byte) *Bucket {
 	return tx.root.Bucket(name)
 }
 
+// GetBucket retrieves a nested bucket by name.
+// Returns an error if the name is not a bucket or does not exist.
+// The bucket instance is only valid for the lifetime of the transaction.
+func (tx *Tx) GetBucket(name []byte) (*Bucket, error) {
+	return tx.root.GetBucket(name)
+}
+
 // CreateBucket creates a new bucket.
 // Returns an error if the bucket already exists, if the bucket name is blank, or if the bucket name is too long.
 // The bucket instance is only valid for the lifetime of the transaction.
