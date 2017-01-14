@@ -1134,7 +1134,7 @@ func TestBucket_Put_ValueTooLarge(t *testing.T) {
 }
 
 // Ensure a bucket can get any value type
-func TestBucket_GetAny(t *testing.T) {
+func TestBucket_Get_ex(t *testing.T) {
 	db := MustOpenDB()
 	defer db.MustClose()
 
@@ -1152,28 +1152,78 @@ func TestBucket_GetAny(t *testing.T) {
 	tx.Bucket([]byte("B")).CreateBucket([]byte("E"))
 	tx.Bucket([]byte("B")).Put([]byte("F"), nil)
 
-	av, ab, aok := tx.Bucket([]byte("B")).GetAny([]byte("A"))
-	bv, bb, bok := tx.Bucket([]byte("B")).GetAny([]byte("B"))
-	cv, cb, cok := tx.Bucket([]byte("B")).GetAny([]byte("C"))
-	dv, dd, dok := tx.Bucket([]byte("B")).GetAny([]byte("D"))
-	ev, eb, eok := tx.Bucket([]byte("B")).GetAny([]byte("E"))
-	fv, fb, fok := tx.Bucket([]byte("B")).GetAny([]byte("F"))
-	gv, gb, gok := tx.Bucket([]byte("B")).GetAny([]byte("G"))
+	t.Run("GetAny", func(t *testing.T) {
+		av, ab, aok := tx.Bucket([]byte("B")).GetAny([]byte("A"))
+		bv, bb, bok := tx.Bucket([]byte("B")).GetAny([]byte("B"))
+		cv, cb, cok := tx.Bucket([]byte("B")).GetAny([]byte("C"))
+		dv, dd, dok := tx.Bucket([]byte("B")).GetAny([]byte("D"))
+		ev, eb, eok := tx.Bucket([]byte("B")).GetAny([]byte("E"))
+		fv, fb, fok := tx.Bucket([]byte("B")).GetAny([]byte("F"))
+		gv, gb, gok := tx.Bucket([]byte("B")).GetAny([]byte("G"))
 
-	v := fmt.Sprintf(""+
-		"[%v:%v:%v],[%v:%v:%v],[%v,%v:%v],"+
-		"[%v,%v:%v],[%v,%v:%v],[%v,%v:%v],"+
-		"[%v,%v:%v]",
-		av != nil, ab != nil, aok, bv != nil, bb != nil, bok,
-		cv != nil, cb != nil, cok, dv != nil, dd != nil, dok,
-		ev != nil, eb != nil, eok, fv != nil, fb != nil, fok,
-		gv != nil, gb != nil, gok)
-	x := "[false:true:true],[true:false:true],[false,true:true]," +
-		"[true,false:true],[false,true:true],[false,false:true]," +
-		"[false,false:false]"
-	if x != v {
-		t.Fatalf("expected '%v', got '%v'", x, v)
-	}
+		v := fmt.Sprintf(""+
+			"[%v:%v:%v],[%v:%v:%v],[%v:%v:%v],"+
+			"[%v:%v:%v],[%v:%v:%v],[%v:%v:%v],"+
+			"[%v:%v:%v]",
+			av != nil, ab != nil, aok, bv != nil, bb != nil, bok,
+			cv != nil, cb != nil, cok, dv != nil, dd != nil, dok,
+			ev != nil, eb != nil, eok, fv != nil, fb != nil, fok,
+			gv != nil, gb != nil, gok)
+		x := "[false:true:true],[true:false:true],[false:true:true]," +
+			"[true:false:true],[false:true:true],[false:false:true]," +
+			"[false:false:false]"
+		if x != v {
+			t.Fatalf("expected '%v', got '%v'", x, v)
+		}
+	})
+
+	t.Run("GetBucket", func(t *testing.T) {
+		a, aerr := tx.Bucket([]byte("B")).GetBucket([]byte("A"))
+		b, berr := tx.Bucket([]byte("B")).GetBucket([]byte("B"))
+		c, cerr := tx.Bucket([]byte("B")).GetBucket([]byte("C"))
+		d, derr := tx.Bucket([]byte("B")).GetBucket([]byte("D"))
+		e, eerr := tx.Bucket([]byte("B")).GetBucket([]byte("E"))
+		f, ferr := tx.Bucket([]byte("B")).GetBucket([]byte("F"))
+		g, gerr := tx.Bucket([]byte("B")).GetBucket([]byte("G"))
+		v := fmt.Sprintf(""+
+			"[%v:%v],[%v:%v],[%v:%v],"+
+			"[%v:%v],[%v:%v],[%v:%v],"+
+			"[%v:%v]",
+			a != nil, aerr, b != nil, berr,
+			c != nil, cerr, d != nil, derr,
+			e != nil, eerr, f != nil, ferr,
+			g != nil, gerr)
+		x := "[true:<nil>],[false:incompatible value],[true:<nil>]," +
+			"[false:incompatible value],[true:<nil>]," +
+			"[false:incompatible value],[false:bucket not found]"
+		if x != v {
+			t.Fatalf("expected '%v', got '%v'", x, v)
+		}
+	})
+
+	t.Run("GetValue", func(t *testing.T) {
+		a, aerr := tx.Bucket([]byte("B")).GetValue([]byte("A"))
+		b, berr := tx.Bucket([]byte("B")).GetValue([]byte("B"))
+		c, cerr := tx.Bucket([]byte("B")).GetValue([]byte("C"))
+		d, derr := tx.Bucket([]byte("B")).GetValue([]byte("D"))
+		e, eerr := tx.Bucket([]byte("B")).GetValue([]byte("E"))
+		f, ferr := tx.Bucket([]byte("B")).GetValue([]byte("F"))
+		g, gerr := tx.Bucket([]byte("B")).GetValue([]byte("G"))
+		v := fmt.Sprintf(""+
+			"[%v:%v],[%v:%v],[%v:%v],"+
+			"[%v:%v],[%v:%v],[%v:%v],"+
+			"[%v:%v]",
+			a != nil, aerr, b != nil, berr,
+			c != nil, cerr, d != nil, derr,
+			e != nil, eerr, f != nil, ferr,
+			g != nil, gerr)
+		x := "[false:incompatible value],[true:<nil>]," +
+			"[false:incompatible value],[true:<nil>]," +
+			"[false:incompatible value],[false:<nil>],[false:value not found]"
+		if x != v {
+			t.Fatalf("expected '%v', got '%v'", x, v)
+		}
+	})
 }
 
 // Ensure a bucket can calculate stats.

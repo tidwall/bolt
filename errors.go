@@ -68,4 +68,7 @@ var (
 	// on an existing non-bucket key or when trying to create or delete a
 	// non-bucket key on an existing bucket key.
 	ErrIncompatibleValue = errors.New("incompatible value")
+
+	// ErrValueNotFound is returned when trying to access a value that does not exist.
+	ErrValueNotFound = errors.New("value not found")
 )

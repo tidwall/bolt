@@ -1,3 +1,33 @@
+This fork is the same as the original bolt with the addition of four functions:
+
+```go
+func (b *Bucket) GetAny(key []byte) (value []byte, bucket *Bucket, ok bool) {}
+func (b *Bucket) GetValue(key []byte) (value []byte, err error) {}
+func (b *Bucket) GetBucket(name []byte) (bucket *Bucket, err error) {}
+func (c *Cursor) IsBucket() bool {}
+```
+**GetAny** retrieves a value or nested bucket for a key in the bucket.
+Returns ok if the key exists along with a value or a nested bucket.
+
+**GetValue** retrieves the value for a key in the bucket.
+Returns an error if the value does not exist or is not found.
+
+**GetBucket** retrieves a nested bucket by name.
+Returns an error if the name is not a bucket or does not exist.
+
+**IsBucket** returns true if the current key under the cursor is a bucket, for example:
+
+```go
+c := b.Cursor()
+for k, v := c.First(); k != nil; k, v = c.Next() {
+	if c.IsBucket(){
+		// current key is a nested bucket
+	} else {
+		// current key is a []byte value
+	}
+}
+```
+
 Bolt [![Coverage Status](https://coveralls.io/repos/boltdb/bolt/badge.svg?branch=master)](https://coveralls.io/r/boltdb/bolt?branch=master) [![GoDoc](https://godoc.org/github.com/boltdb/bolt?status.svg)](https://godoc.org/github.com/boltdb/bolt) ![Version](https://img.shields.io/badge/version-1.2.1-green.svg)
 ====
 

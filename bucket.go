@@ -125,6 +125,36 @@ func (b *Bucket) Bucket(name []byte) *Bucket {
 	return child
 }
 
+// GetBucket retrieves a nested bucket by name.
+// Returns an error if the name is not a bucket or does not exist.
+// The bucket instance is only valid for the lifetime of the transaction.
+func (b *Bucket) GetBucket(name []byte) (*Bucket, error) {
+	if b.buckets != nil {
+		if child := b.buckets[string(name)]; child != nil {
+			return child, nil
+		}
+	}
+
+	// Move cursor to key.
+	c := b.Cursor()
+	k, v, flags := c.seek(name)
+
+	// Return nil if the key doesn't exist or it is not a bucket.
+	if !bytes.Equal(name, k) {
+		return nil, ErrBucketNotFound
+	} else if (flags & bucketLeafFlag) == 0 {
+		return nil, ErrIncompatibleValue
+	}
+
+	// Otherwise create a bucket and cache it.
+	var child = b.openBucket(v)
+	if b.buckets != nil {
+		b.buckets[string(name)] = child
+	}
+
+	return child, nil
+}
+
 // Helper method that re-interprets a sub-bucket value
 // from a parent into a Bucket
 func (b *Bucket) openBucket(value []byte) *Bucket {
@@ -276,6 +306,24 @@ func (b *Bucket) Get(key []byte) []byte {
 		return nil
 	}
 	return v
+}
+
+// GetValue retrieves the value for a key in the bucket.
+// Returns an error if the value does not exist or is not found.
+// The returned value is only valid for the life of the transaction.
+func (b *Bucket) GetValue(key []byte) ([]byte, error) {
+	k, v, flags := b.Cursor().seek(key)
+
+	// Return nil if this is a bucket.
+	if (flags & bucketLeafFlag) != 0 {
+		return nil, ErrIncompatibleValue
+	}
+
+	// If our target node isn't the same key as what's passed in then return nil.
+	if !bytes.Equal(key, k) {
+		return nil, ErrValueNotFound
+	}
+	return v, nil
 }
 
 // GetAny retrieves a value or nested bucket for a key in the bucket.
