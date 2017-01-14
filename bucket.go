@@ -278,6 +278,36 @@ func (b *Bucket) Get(key []byte) []byte {
 	return v
 }
 
+// GetAny retrieves a value or nested bucket for a key in the bucket.
+// Returns ok if the key exists
+// Returns a value or a nested bucket
+// The returned value or bucket instance is only valid for the life of the transaction.
+func (b *Bucket) GetAny(key []byte) (value []byte, bucket *Bucket, ok bool) {
+	if b.buckets != nil {
+		if child := b.buckets[string(key)]; child != nil {
+			return nil, child, true
+		}
+	}
+
+	k, v, flags := b.Cursor().seek(key)
+
+	// Return nil if the key doesn't exist.
+	if !bytes.Equal(key, k) {
+		return nil, nil, false
+	}
+
+	if (flags & bucketLeafFlag) != 0 {
+		// Otherwise create a bucket and cache it.
+		var child = b.openBucket(v)
+		if b.buckets != nil {
+			b.buckets[string(key)] = child
+		}
+		return nil, child, true
+	}
+
+	return v, nil, true
+}
+
 // Put sets the value for a key in the bucket.
 // If the key exist then its previous value will be overwritten.
 // Supplied value must remain valid for the life of the transaction.

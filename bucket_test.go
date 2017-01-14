@@ -13,7 +13,7 @@ import (
 	"testing"
 	"testing/quick"
 
-	"github.com/boltdb/bolt"
+	"github.com/tidwall/bolt"
 )
 
 // Ensure that a bucket that gets a non-existent key returns nil.
@@ -1130,6 +1130,49 @@ func TestBucket_Put_ValueTooLarge(t *testing.T) {
 		return nil
 	}); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// Ensure a bucket can get any value type
+func TestBucket_GetAny(t *testing.T) {
+	db := MustOpenDB()
+	defer db.MustClose()
+
+	tx, err := db.Begin(true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback()
+
+	tx.CreateBucket([]byte("B"))
+	tx.Bucket([]byte("B")).CreateBucket([]byte("A"))
+	tx.Bucket([]byte("B")).Put([]byte("B"), []byte("2"))
+	tx.Bucket([]byte("B")).CreateBucket([]byte("C"))
+	tx.Bucket([]byte("B")).Put([]byte("D"), []byte("4"))
+	tx.Bucket([]byte("B")).CreateBucket([]byte("E"))
+	tx.Bucket([]byte("B")).Put([]byte("F"), nil)
+
+	av, ab, aok := tx.Bucket([]byte("B")).GetAny([]byte("A"))
+	bv, bb, bok := tx.Bucket([]byte("B")).GetAny([]byte("B"))
+	cv, cb, cok := tx.Bucket([]byte("B")).GetAny([]byte("C"))
+	dv, dd, dok := tx.Bucket([]byte("B")).GetAny([]byte("D"))
+	ev, eb, eok := tx.Bucket([]byte("B")).GetAny([]byte("E"))
+	fv, fb, fok := tx.Bucket([]byte("B")).GetAny([]byte("F"))
+	gv, gb, gok := tx.Bucket([]byte("B")).GetAny([]byte("G"))
+
+	v := fmt.Sprintf(""+
+		"[%v:%v:%v],[%v:%v:%v],[%v,%v:%v],"+
+		"[%v,%v:%v],[%v,%v:%v],[%v,%v:%v],"+
+		"[%v,%v:%v]",
+		av != nil, ab != nil, aok, bv != nil, bb != nil, bok,
+		cv != nil, cb != nil, cok, dv != nil, dd != nil, dok,
+		ev != nil, eb != nil, eok, fv != nil, fb != nil, fok,
+		gv != nil, gb != nil, gok)
+	x := "[false:true:true],[true:false:true],[false,true:true]," +
+		"[true,false:true],[false,true:true],[false,false:true]," +
+		"[false,false:false]"
+	if x != v {
+		t.Fatalf("expected '%v', got '%v'", x, v)
 	}
 }
 

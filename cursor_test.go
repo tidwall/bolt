@@ -8,10 +8,11 @@ import (
 	"os"
 	"reflect"
 	"sort"
+	"strings"
 	"testing"
 	"testing/quick"
 
-	"github.com/boltdb/bolt"
+	"github.com/tidwall/bolt"
 )
 
 // Ensure that a cursor can return a reference to the bucket that created it.
@@ -703,6 +704,49 @@ func TestCursor_QuickCheck_BucketsOnly_Reverse(t *testing.T) {
 		return nil
 	}); err != nil {
 		t.Fatal(err)
+	}
+}
+func TestCursor_IsBucket(t *testing.T) {
+	db := MustOpenDB()
+	defer db.MustClose()
+
+	tx, err := db.Begin(true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback()
+
+	tx.CreateBucket([]byte("A"))
+	tx.CreateBucket([]byte("B"))
+	tx.CreateBucket([]byte("C"))
+
+	var arr []string
+	c := tx.Cursor()
+	for k, v := c.First(); k != nil; k, v = c.Next() {
+		arr = append(arr, fmt.Sprintf("[%s:%s:%v]", k, v, c.IsBucket()))
+	}
+	v := strings.Join(arr, ",")
+	x := "[A::true],[B::true],[C::true]"
+	if v != x {
+		t.Fatalf("expected '%v', got '%v'", x, v)
+	}
+
+	tx.Bucket([]byte("B")).CreateBucket([]byte("A"))
+	tx.Bucket([]byte("B")).Put([]byte("B"), []byte("2"))
+	tx.Bucket([]byte("B")).CreateBucket([]byte("C"))
+	tx.Bucket([]byte("B")).Put([]byte("D"), []byte("4"))
+	tx.Bucket([]byte("B")).CreateBucket([]byte("E"))
+	tx.Bucket([]byte("B")).Put([]byte("F"), nil)
+
+	arr = nil
+	c = tx.Bucket([]byte("B")).Cursor()
+	for k, v := c.First(); k != nil; k, v = c.Next() {
+		arr = append(arr, fmt.Sprintf("[%s:%s:%v]", k, v, c.IsBucket()))
+	}
+	v = strings.Join(arr, ",")
+	x = "[A::true],[B:2:false],[C::true],[D:4:false],[E::true],[F::false]"
+	if v != x {
+		t.Fatalf("expected '%v', got '%v'", x, v)
 	}
 }
 

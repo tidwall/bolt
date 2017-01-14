@@ -18,6 +18,7 @@ import (
 type Cursor struct {
 	bucket *Bucket
 	stack  []elemRef
+	cisb   bool
 }
 
 // Bucket returns the bucket that this cursor was created from.
@@ -43,8 +44,10 @@ func (c *Cursor) First() (key []byte, value []byte) {
 
 	k, v, flags := c.keyValue()
 	if (flags & uint32(bucketLeafFlag)) != 0 {
+		c.cisb = true
 		return k, nil
 	}
+	c.cisb = false
 	return k, v
 
 }
@@ -62,8 +65,10 @@ func (c *Cursor) Last() (key []byte, value []byte) {
 	c.last()
 	k, v, flags := c.keyValue()
 	if (flags & uint32(bucketLeafFlag)) != 0 {
+		c.cisb = true
 		return k, nil
 	}
+	c.cisb = false
 	return k, v
 }
 
@@ -74,8 +79,10 @@ func (c *Cursor) Next() (key []byte, value []byte) {
 	_assert(c.bucket.tx.db != nil, "tx closed")
 	k, v, flags := c.next()
 	if (flags & uint32(bucketLeafFlag)) != 0 {
+		c.cisb = true
 		return k, nil
 	}
+	c.cisb = false
 	return k, v
 }
 
@@ -98,6 +105,7 @@ func (c *Cursor) Prev() (key []byte, value []byte) {
 
 	// If we've hit the end then return nil.
 	if len(c.stack) == 0 {
+		c.cisb = false
 		return nil, nil
 	}
 
@@ -105,8 +113,10 @@ func (c *Cursor) Prev() (key []byte, value []byte) {
 	c.last()
 	k, v, flags := c.keyValue()
 	if (flags & uint32(bucketLeafFlag)) != 0 {
+		c.cisb = true
 		return k, nil
 	}
+	c.cisb = false
 	return k, v
 }
 
@@ -123,10 +133,13 @@ func (c *Cursor) Seek(seek []byte) (key []byte, value []byte) {
 	}
 
 	if k == nil {
+		c.cisb = false
 		return nil, nil
 	} else if (flags & uint32(bucketLeafFlag)) != 0 {
+		c.cisb = true
 		return k, nil
 	}
+	c.cisb = false
 	return k, v
 }
 
@@ -147,6 +160,11 @@ func (c *Cursor) Delete() error {
 	c.node().del(key)
 
 	return nil
+}
+
+// IsBucket returns true if the current key under the cursor is a bucket.
+func (c *Cursor) IsBucket() bool {
+	return c.cisb
 }
 
 // seek moves the cursor to a given key and returns it.

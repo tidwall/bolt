@@ -59,7 +59,7 @@ Shopify and Heroku use Bolt-backed services every day.
 To start using Bolt, install Go and run `go get`:
 
 ```sh
-$ go get github.com/boltdb/bolt/...
+$ go get github.com/tidwall/bolt/...
 ```
 
 This will retrieve the library and install the `bolt` command line utility into
@@ -79,7 +79,7 @@ package main
 import (
 	"log"
 
-	"github.com/boltdb/bolt"
+	"github.com/tidwall/bolt"
 )
 
 func main() {
